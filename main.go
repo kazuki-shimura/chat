@@ -1,25 +1,33 @@
 package main
 
 import (
-	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"path/filepath"
+	"sync"
+	"text/template"
 )
 
-func main() {
-	fmt.Println("Hello World")
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`
-		<html>
-			<head>
-				<title>チャット</title>
-			</head>
-			<body>
-				チャットを始めよう！
-			</body>
-		</html>
-		`))
+// templ葉１つのテンプレートを表します
+type templateHandler struct {
+	once     sync.Once
+	filename string
+	templ    *template.Template
+}
+
+// ServeHTTPはリクエストを処理します
+func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	t.once.Do(func() {
+		t.templ = template.Must(template.ParseFiles(filepath.Join("template", t.filename)))
 	})
+	t.templ.Execute(w, nil)
+}
+
+func main() {
+	// ルート
+	http.Handle("/", &templateHandler{filename: "chat.html"})
+	// Webサーバーの開始とエラーハンドリング
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
